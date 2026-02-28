@@ -99,11 +99,6 @@ curl -X POST http://localhost:8003/api/auth/login \
   - `POST /api/share/{share_code}/verify`
   - `GET /api/share/{share_code}/download?token=...`
 
-灵感与定位：
-
-- 灵感来自“轻量文件分享”场景，但强调私有部署与可控下载策略。
-- 相比通用网盘/临时传输工具，更适合内部团队和自建服务环境（数据可控、策略可控、成本可控）。
-
 ## 🛠️ 技术栈
 
 - 前端：`Vue 3` + `TypeScript` + `Vite` + `Element Plus` + `Vue Router` + `Axios`
