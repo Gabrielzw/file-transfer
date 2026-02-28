@@ -111,7 +111,7 @@ curl -X POST http://localhost:8003/api/auth/login \
 - 数据与存储：`SQLite`（默认）+ 本地文件系统存储
 - 部署：`Docker` + `Docker Compose` + `Nginx`（前端容器）
 
-## ⚙️ 配置说明（如果复杂）
+## ⚙️ 配置说明
 
 核心环境变量（后端使用 `APP_` 前缀）：
 
