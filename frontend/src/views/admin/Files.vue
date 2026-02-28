@@ -17,16 +17,16 @@
         <div class="panel__title">上传</div>
         <el-upload
           drag
-          :show-file-list="false"
+          multiple
+          :show-file-list="true"
           :http-request="customUpload"
           :disabled="uploading"
         >
           <div class="upload-hint">
             <div class="upload-hint__title">拖拽文件到此处，或点击选择</div>
-            <div class="upload-hint__sub">单次仅支持一个文件</div>
+            <div class="upload-hint__sub">支持同时选择多个文件</div>
           </div>
         </el-upload>
-        <el-progress v-if="uploading" :percentage="uploadPercent" :stroke-width="10" />
       </div>
 
       <div class="ft-card panel panel--list">
@@ -142,7 +142,7 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 
@@ -151,10 +151,17 @@ import { buildFileDownloadUrl, createFileDownloadToken, deleteFile, listFiles, u
 import { isAxiosError } from '../../api/http'
 import { authToken } from '../../lib/auth'
 import { formatBytes, formatDateTime, formatExpire } from '../../lib/format'
+import { useIframeDownload } from '../../lib/useIframeDownload'
 import ThemeModeSwitch from '../../components/ThemeModeSwitch.vue'
 import ShareDialog from './components/ShareDialog.vue'
 
-type UploadRequest = { file: File }
+type UploadProgressEvent = { percent: number }
+type UploadRequest = {
+  file: File
+  onProgress?: (event: UploadProgressEvent) => void
+  onSuccess?: (response: unknown) => void
+  onError?: (error: unknown) => void
+}
 
 const router = useRouter()
 
@@ -165,44 +172,20 @@ const page = ref(1)
 const pageSize = ref(20)
 const keyword = ref('')
 
-const uploading = ref(false)
-const uploadPercent = ref(0)
+const activeUploads = ref(0)
+const uploading = computed(() => activeUploads.value > 0)
 
 const shareDialogOpen = ref(false)
 const shareFileId = ref('')
 
-const downloadFrame = ref<HTMLIFrameElement | null>(null)
-
-function ensureDownloadFrame(): HTMLIFrameElement {
-  if (downloadFrame.value) return downloadFrame.value
-  const frame = document.createElement('iframe')
-  frame.style.display = 'none'
-  document.body.appendChild(frame)
-  downloadFrame.value = frame
-  return frame
-}
-
-function triggerDownload(url: string): void {
-  const frame = ensureDownloadFrame()
-  frame.onload = () => {
-    try {
-      const text = frame.contentDocument?.body?.innerText?.trim()
-      if (!text) return
-      const payload = JSON.parse(text) as { detail?: unknown }
-      const detail = typeof payload.detail === 'string' ? payload.detail : null
-      if (detail) ElMessage.error(detail)
-    } catch {}
-  }
-  frame.src = url
-}
-
-onBeforeUnmount(() => {
-  downloadFrame.value?.remove()
-  downloadFrame.value = null
-})
+const { triggerDownload } = useIframeDownload({ onError: (message) => ElMessage.error(message) })
+let refreshQueued = false
 
 async function refresh(): Promise<void> {
-  if (loading.value) return
+  if (loading.value) {
+    refreshQueued = true
+    return
+  }
   loading.value = true
   try {
     const res = await listFiles({
@@ -223,18 +206,22 @@ async function refresh(): Promise<void> {
   } finally {
     loading.value = false
   }
+
+  if (!refreshQueued) return
+  refreshQueued = false
+  await refresh()
 }
 
 async function customUpload(req: any): Promise<void> {
-  const file = (req as UploadRequest).file
-  if (uploading.value) return
-  uploading.value = true
-  uploadPercent.value = 0
+  const { file, onProgress, onSuccess, onError } = req as UploadRequest
+  activeUploads.value += 1
   try {
-    await uploadFile(file, null, (p) => (uploadPercent.value = p))
-    ElMessage.success('上传成功')
-    await refresh()
+    const result = await uploadFile(file, null, (p) => onProgress?.({ percent: p }))
+    onSuccess?.(result)
+    ElMessage.success(`${file.name} 上传成功`)
+    void refresh()
   } catch (error) {
+    onError?.(error)
     if (isAxiosError(error) && error.response?.status === 413) {
       const detail = (error.response?.data as { detail?: string } | undefined)?.detail
       ElMessage.error(detail ?? '文件过大')
@@ -243,7 +230,7 @@ async function customUpload(req: any): Promise<void> {
     ElMessage.error('上传失败')
     console.error(error)
   } finally {
-    uploading.value = false
+    activeUploads.value -= 1
   }
 }
 
@@ -309,150 +296,4 @@ async function onPageChange(next: number): Promise<void> {
 void refresh()
 </script>
 
-<style scoped>
-.grid {
-  display: grid;
-  grid-template-columns: 360px 1fr;
-  gap: 14px;
-  align-items: start;
-}
-
-.panel {
-  border-radius: 18px;
-  padding: 16px;
-}
-
-.panel__header {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.panel__title {
-  font-weight: 700;
-  letter-spacing: 0.2px;
-}
-
-.panel__tools {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.file-cards {
-  display: none;
-  position: relative;
-}
-
-.file-card {
-  background: var(--ft-surface-2);
-  border: 1px solid var(--ft-border);
-  border-radius: 16px;
-  padding: 14px;
-}
-
-.file-card__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.file-card__name {
-  font-weight: 800;
-  line-height: 1.25;
-  overflow-wrap: anywhere;
-}
-
-.file-card__meta {
-  margin-top: 6px;
-  font-size: 12px;
-  color: var(--ft-text-dim);
-}
-
-.file-card__ops {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.upload-hint {
-  display: grid;
-  gap: 4px;
-}
-
-.upload-hint__title {
-  font-weight: 700;
-}
-
-.upload-hint__sub {
-  font-size: 12px;
-  color: var(--ft-text-dim);
-}
-
-.name__main {
-  font-weight: 700;
-}
-
-.name__sub {
-  font-size: 12px;
-  color: var(--ft-text-dim);
-  margin-top: 4px;
-}
-
-.ops {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.pager {
-  display: flex;
-  justify-content: flex-end;
-  padding-top: 12px;
-}
-
-@media (max-width: 980px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 900px), (hover: none) and (pointer: coarse) {
-  .table {
-    display: none;
-  }
-
-  .file-cards {
-    display: grid;
-    gap: 12px;
-  }
-
-  .panel__header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .panel__tools {
-    width: 100%;
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .panel__tools :deep(.el-button) {
-    width: 100%;
-  }
-
-  .pager {
-    justify-content: center;
-  }
-
-  .pager :deep(.el-pagination) {
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-}
-</style>
+<style scoped src="./Files.css"></style>
