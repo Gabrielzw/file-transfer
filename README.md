@@ -5,8 +5,6 @@
 ![GitHub Stars](https://img.shields.io/github/stars/Gabrielzw/file-transfer?style=flat-square)
 ![License](https://img.shields.io/github/license/Gabrielzw/file-transfer?style=flat-square)
 ![Top Language](https://img.shields.io/github/languages/top/Gabrielzw/file-transfer?style=flat-square)
-![Build](https://img.shields.io/github/actions/workflow/status/Gabrielzw/file-transfer/ci.yml?branch=main&style=flat-square)
-![Status](https://img.shields.io/badge/status-开发中-orange?style=flat-square)
 ![Vue](https://img.shields.io/badge/Vue-3.5-42b883?style=flat-square&logo=vue.js)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=flat-square&logo=fastapi)s
 
@@ -55,6 +53,9 @@ cd frontend
 npm install
 npm run dev
 ```
+
+### 效果展示
+![demo](docs/images/homepage.png)
 
 ### 使用示例
 
