@@ -58,6 +58,18 @@
           </div>
         </div>
 
+        <div class="file-cards-toolbar">
+          <el-checkbox
+            :model-value="allVisibleSelected"
+            :indeterminate="visibleSelectionIndeterminate"
+            :disabled="loading || deleting || items.length === 0"
+            @change="toggleVisibleSelection"
+          >
+            全选
+          </el-checkbox>
+          <div class="file-cards-toolbar__count">已选 {{ selectedIds.length }} / {{ items.length }}</div>
+        </div>
+
         <el-checkbox-group v-model="selectedIds" class="file-cards" v-loading="loading">
           <el-empty v-if="!loading && items.length === 0" description="暂无文件" />
 
@@ -71,10 +83,14 @@
             </div>
 
             <div class="file-card__meta">
-              {{ formatBytes(row.size) }} · {{ formatDateTime(row.created_at) }}
-            </div>
-            <div class="file-card__meta">
-              有效期：{{ row.active_share ? formatExpire(row.active_share.expire_at) : '—' }}
+              <span class="file-card__meta-label">大小</span>
+              <span class="file-card__meta-value">{{ formatBytes(row.size) }}</span>
+              <span class="file-card__meta-label">上传时间</span>
+              <span class="file-card__meta-value">{{ formatDateTime(row.created_at) }}</span>
+              <span class="file-card__meta-label">有效期</span>
+              <span class="file-card__meta-value">
+                {{ row.active_share ? formatExpire(row.active_share.expire_at) : '—' }}
+              </span>
             </div>
 
             <div class="file-card__ops">
@@ -166,7 +182,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 import type { FileItem } from '../../api/files'
 import { formatBytes, formatDateTime, formatExpire } from '../../lib/format'
@@ -197,6 +213,20 @@ const {
   onLogout,
   onPageChange
 } = useAdminFiles()
+
+const visibleIds = computed(() => items.value.map((item) => item.id))
+const allVisibleSelected = computed(
+  () => visibleIds.value.length > 0 && selectedIds.value.length === visibleIds.value.length
+)
+const visibleSelectionIndeterminate = computed(() => {
+  const selectedCount = selectedIds.value.length
+  const totalCount = visibleIds.value.length
+  return selectedCount > 0 && selectedCount < totalCount
+})
+
+function toggleVisibleSelection(checked: boolean): void {
+  selectedIds.value = checked ? [...visibleIds.value] : []
+}
 
 function openShare(row: FileItem): void {
   shareFileId.value = row.id
