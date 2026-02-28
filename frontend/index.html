@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="color-scheme" content="light dark" />
+    <title>文件中转站</title>
+    <script>
+      ;(() => {
+        const STORAGE_KEY = 'ft_theme_mode'
+        const rawMode = localStorage.getItem(STORAGE_KEY)
+        const isValid = rawMode === 'light' || rawMode === 'dark' || rawMode === 'system'
+        if (rawMode !== null && !isValid) {
+          console.error(`[theme] invalid stored theme mode: ${rawMode}`)
+          localStorage.removeItem(STORAGE_KEY)
+        }
+
+        const mode = isValid ? rawMode : null
+        const supportsMatchMedia = typeof window.matchMedia === 'function'
+        const systemPrefersDark = supportsMatchMedia
+          ? window.matchMedia('(prefers-color-scheme: dark)').matches
+          : false
+        if (!supportsMatchMedia && (mode === null || mode === 'system')) {
+          console.error('[theme] window.matchMedia is not available; "system" theme will behave as "light".')
+        }
+
+        const effective =
+          mode === 'dark'
+            ? 'dark'
+            : mode === 'light'
+              ? 'light'
+              : systemPrefersDark
+                ? 'dark'
+                : 'light'
+
+        const root = document.documentElement
+        root.classList.toggle('dark', effective === 'dark')
+        root.dataset.theme = effective
+        root.dataset.themeMode = mode ?? 'system'
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,16 @@
+.env
+data/
+uploads/
+
+backend/.env
+backend/__pycache__/
+backend/**/*.pyc
+
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/*.tsbuildinfo
+*.tsbuildinfo
+
+.DS_Store
+Thumbs.db
